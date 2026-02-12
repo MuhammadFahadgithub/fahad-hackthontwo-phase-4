@@ -1,0 +1,49 @@
+/* frontend/app/globals.css */
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f9;
+  color: #333;
+}
+
+h1, h2, h3, h4 {
+  margin: 0 0 10px 0;
+}
+
+button {
+  padding: 8px 12px;
+  margin: 4px;
+  border: none;
+  border-radius: 5px;
+  background-color: #0070f3;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background-color: #0051a2;
+}
+
+ul {
+  padding-left: 20px;
+}
+
+.chatbot {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 250px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0px 5px 15px rgba(0,0,0,0.2);
+}
+
+.chatbot button {
+  width: 100%;
+  margin-top: 10px;
+}

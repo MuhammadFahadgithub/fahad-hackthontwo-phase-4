@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(git add backend/app/api/v1/todos.py frontend/lib/api/todos.ts specs/001-frontend-phase2/tasks.md)",
+      "Bash(git commit:*)",
+      "Bash(git add .gitignore)",
+      "Bash(git add -f frontend/lib/api/todos.ts)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File .specify/scripts/powershell/setup-plan.ps1 -Json)"
+    ]
+  }
+}

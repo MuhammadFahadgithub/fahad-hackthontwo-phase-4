@@ -1,0 +1,246 @@
+apiVersion: v1
+kind: DeploymentSpec
+metadata:
+  name: todo-chatbot-deployment
+  version: "1.0.0"
+  target: minikube
+  description: "Deployment specification for Todo Chatbot on local Kubernetes cluster"
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+    pauseDuration: "30s"
+environments:
+  - name: development
+    namespace: todo-chatbot-dev
+    replicas: 1
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+    configuration:
+      - name: app-config
+        source: configmap
+        values:
+          LOG_LEVEL: "debug"
+          API_DEBUG: "true"
+          MOCK_EXTERNAL_SERVICES: "true"
+  - name: staging
+    namespace: todo-chatbot-staging
+    replicas: 2
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "256Mi"
+      limits:
+        cpu: "1000m"
+        memory: "512Mi"
+    configuration:
+      - name: app-config
+        source: configmap
+        values:
+          LOG_LEVEL: "info"
+          API_DEBUG: "false"
+          MOCK_EXTERNAL_SERVICES: "false"
+  - name: production
+    namespace: todo-chatbot-prod
+    replicas: 3
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "2000m"
+        memory: "1024Mi"
+    configuration:
+      - name: app-config
+        source: configmap
+        values:
+          LOG_LEVEL: "info"
+          API_DEBUG: "false"
+          MOCK_EXTERNAL_SERVICES: "false"
+      - name: production-secrets
+        source: secret
+        values:
+          SENTRY_DSN: "https://examplePublicKey@o0.ingest.sentry.io/0"
+          DD_API_KEY: "d0nt5te@lth15k3y"
+
+preDeployment:
+  checks:
+    - name: cluster-health-check
+      type: health
+      command: "kubectl get nodes && kubectl get pods --all-namespaces"
+      expectedResult: "All nodes Ready, no pods in CrashLoopBackOff"
+      timeout: "60s"
+    - name: resource-availability-check
+      type: capacity
+      command: "kubectl describe nodes | grep -i allocatable"
+      expectedResult: "Sufficient CPU and memory available for deployment"
+      timeout: "30s"
+  migrations:
+    - name: database-schema-migration
+      type: database
+      script: "./scripts/migrate-db.sh"
+      rollback: "./scripts/rollback-db.sh"
+      timeout: "300s"
+  backups:
+    - name: pre-deployment-backup
+      type: database
+      destination: "gs://todo-chatbot-backups/pre-deployment-$(date +%Y%m%d-%H%M%S)"
+
+deployment:
+  phases:
+    - name: create-namespace
+      order: 1
+      tasks:
+        - name: create-namespace-if-not-exists
+          type: kubectl
+          command: "kubectl create namespace todo-chatbot --dry-run=client -o yaml | kubectl apply -f -"
+          timeout: "30s"
+          retries: 2
+    - name: deploy-database
+      order: 2
+      tasks:
+        - name: deploy-postgres-statefulset
+          type: helm
+          command: "helm install postgres bitnami/postgresql --namespace todo-chatbot --set auth.username=todouser --set auth.password=todopass --set auth.database=tododb --set primary.persistence.size=5Gi"
+          timeout: "300s"
+          retries: 3
+        - name: wait-for-postgres-ready
+          type: kubectl
+          command: "kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql --namespace todo-chatbot --timeout=300s"
+          timeout: "300s"
+          retries: 1
+    - name: deploy-backend
+      order: 3
+      tasks:
+        - name: deploy-backend-deployment
+          type: kubectl
+          command: "kubectl apply -f manifests/backend-deployment.yaml"
+          timeout: "120s"
+          retries: 2
+        - name: deploy-backend-service
+          type: kubectl
+          command: "kubectl apply -f manifests/backend-service.yaml"
+          timeout: "60s"
+          retries: 2
+        - name: wait-for-backend-ready
+          type: kubectl
+          command: "kubectl wait --for=condition=ready pod -l app=todo-backend --namespace todo-chatbot --timeout=300s"
+          timeout: "300s"
+          retries: 1
+    - name: deploy-frontend
+      order: 4
+      tasks:
+        - name: deploy-frontend-deployment
+          type: kubectl
+          command: "kubectl apply -f manifests/frontend-deployment.yaml"
+          timeout: "120s"
+          retries: 2
+        - name: deploy-frontend-service
+          type: kubectl
+          command: "kubectl apply -f manifests/frontend-service.yaml"
+          timeout: "60s"
+          retries: 2
+        - name: deploy-frontend-ingress
+          type: kubectl
+          command: "kubectl apply -f manifests/frontend-ingress.yaml"
+          timeout: "60s"
+          retries: 2
+        - name: wait-for-frontend-ready
+          type: kubectl
+          command: "kubectl wait --for=condition=ready pod -l app=todo-frontend --namespace todo-chatbot --timeout=300s"
+          timeout: "300s"
+          retries: 1
+    - name: configure-networking
+      order: 5
+      tasks:
+        - name: deploy-network-policies
+          type: kubectl
+          command: "kubectl apply -f manifests/network-policies.yaml"
+          timeout: "60s"
+          retries: 2
+        - name: deploy-ingress-controller
+          type: helm
+          command: "helm install nginx-ingress ingress-nginx/ingress-nginx --namespace ingress-basic --set controller.replicaCount=1 --set controller.nodeSelector.\"kubernetes.io/os\"=linux --set defaultBackend.nodeSelector.\"kubernetes.io/os\"=linux"
+          timeout: "300s"
+          retries: 3
+
+postDeployment:
+  validations:
+    - name: service-connectivity-test
+      type: connectivity
+      command: "kubectl exec -it deployment/todo-frontend -- nslookup todo-backend.todo-chatbot.svc.cluster.local"
+      expectedResult: "DNS lookup succeeds"
+      timeout: "60s"
+    - name: health-check-endpoint-validation
+      type: health
+      command: "curl -f http://todo-chatbot.local/health || kubectl port-forward svc/todo-frontend 8080:80 && curl -f http://localhost:8080/health"
+      expectedResult: "Health check returns 200 OK"
+      timeout: "120s"
+    - name: smoke-test
+      type: integration
+      command: "python ./tests/smoke-test.py"
+      expectedResult: "All smoke tests pass"
+      timeout: "300s"
+  notifications:
+    - type: slack
+      destination: "#deployments"
+      message: "Deployment of Todo Chatbot v${VERSION} completed successfully to ${ENVIRONMENT}"
+      conditions: ["success"]
+    - type: email
+      destination: "dev-team@example.com"
+      message: "Deployment failed. Check logs for details."
+      conditions: ["failure"]
+
+rollback:
+  enabled: true
+  automatic: true
+  triggers:
+    - condition: error-rate > 5%
+      threshold: 5
+      duration: "5m"
+    - condition: latency-p95 > 1000ms
+      threshold: 1000
+      duration: "2m"
+    - condition: availability < 95%
+      threshold: 95
+      duration: "5m"
+  procedure:
+    - step: "Roll back to previous version using Helm"
+      command: "helm rollback todo-chatbot 0"
+    - step: "Verify rollback succeeded"
+      command: "kubectl get pods --selector=app=todo-chatbot --template='{{range .items}}{{.metadata.name}}{{\"\\n\"}}{{end}}'"
+
+monitoring:
+  healthChecks:
+    - name: pod-health
+      endpoint: "/health"
+      interval: "30s"
+      timeout: "10s"
+    - name: service-availability
+      endpoint: "/api/v1/status"
+      interval: "60s"
+      timeout: "15s"
+  alerts:
+    - name: high-error-rate
+      condition: "rate(http_requests_total{status=~\"5..\",app=\"todo-backend\"}[5m]) > 0.05"
+      severity: critical
+      channels: ["#alerts", "pager-duty"]
+    - name: high-latency
+      condition: "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app=\"todo-backend\"}[5m])) > 1"
+      severity: warning
+      channels: ["#alerts"]
+    - name: low-availability
+      condition: "sum(up{app=\"todo-backend\"}) / count(up{app=\"todo-backend\"}) < 0.8"
+      severity: critical
+      channels: ["#alerts", "pager-duty"]
+
+documentation:
+  runbook: "https://todo-chatbot.local/docs/runbook"
+  changelog: "https://todo-chatbot.local/docs/changelog"
+  rollbackProcedure: "https://todo-chatbot.local/docs/rollback-procedure"

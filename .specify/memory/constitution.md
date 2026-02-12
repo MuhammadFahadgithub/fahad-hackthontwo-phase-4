@@ -1,55 +1,43 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!-- SYNC IMPACT REPORT
+Version change: N/A (initial version) → 4.0.0
+Modified principles: None (new principles added)
+Added sections: All principles and sections as per Phase 4 requirements
+Removed sections: None (this is the initial constitution)
+Templates requiring updates: 
+- .specify/templates/plan-template.md ✅ updated
+- .specify/templates/spec-template.md ⚠ pending (no direct references found)
+- .specify/templates/tasks-template.md ⚠ pending (no direct references found)
+Follow-up TODOs: None
+-->
+
+# Todo Chatbot Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### Spec-Driven Development Philosophy
+Specification is the single source of truth. Workflow: Write Specifications (YAML, JSON, HCL) → AI Agents Interpret Specifications → Infrastructure is Generated/Deployed → Validation Against Specifications → Continuous Compliance Monitoring. Benefits: Declarative over Imperative, Version-controlled infrastructure, AI-assisted automation, Predictable deployments, Easy rollbacks and auditing.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### AI-First DevOps Approach
+Instead of traditional commands, use AI agents: Use Gordon for Docker operations (e.g., 'docker ai "build optimized image"'), Use kubectl-ai for Kubernetes operations (e.g., 'kubectl-ai "deploy todo frontend with 2 replicas"'), Use Kagent for troubleshooting and analysis (e.g., 'kagent "analyze why pods are crashing"').
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### Cloud-Native Architecture
+Embrace containerization with Docker, orchestration with Kubernetes (Minikube for local), package management with Helm Charts, and infrastructure-as-code principles. All components should be designed for cloud deployment with scalability and resilience in mind.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### Declarative Infrastructure
+Define infrastructure and application states in YAML/JSON specifications rather than imperative commands. Use tools like Helm Charts and Kubernetes manifests to declare the desired state of the system, allowing the platform to achieve that state automatically.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### Continuous Validation and Monitoring
+Implement continuous validation of deployments against specifications, monitor system health with AI-powered tools like Kagent, establish performance baselines, and maintain observability for all system components to ensure reliability and performance.
 
-### [PRINCIPLE_6_NAME]
+## Technology Stack Requirements
 
+Infrastructure Layer: Containerization with Docker Desktop enhanced by Gordon (Docker AI), Orchestration with Kubernetes (Minikube) assisted by kubectl-ai and Kagent, Package management with Helm Charts, Networking with Minikube Ingress configured via AI assistance. AI DevOps Tools: Gordon for intelligent image building and optimization, kubectl-ai for natural language Kubernetes operations, Kagent for advanced AIOps and cluster analysis.
 
-[PRINCIPLE__DESCRIPTION]
+## Development and Deployment Workflow
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
-
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Specification Phase: Define infrastructure in specs/infrastructure.yaml, application requirements in specs/application.yaml, and deployment configuration in specs/deployment.yaml. Implementation Phase: Use Gordon for optimized Docker builds, kubectl-ai for Kubernetes resource creation, Helm for application packaging and deployment, Kagent for post-deployment analysis and optimization. Validation Phase: Execute automated tests, verify health checks, confirm performance benchmarks, ensure security compliance.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+The constitution serves as the governing document for all Todo Chatbot development and deployment activities. All specifications must align with these principles. Amendments require documentation of changes, approval from the development team, and a migration plan for existing implementations. All team members must verify compliance with these principles during code reviews and deployment processes.
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 4.0.0 | **Ratified**: 2026-01-01 | **Last Amended**: 2026-02-12

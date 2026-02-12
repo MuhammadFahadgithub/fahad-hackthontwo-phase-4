@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env*
+
+# Build outputs
+.next/
+dist/
+build/
+.nyc_output
+coverage/
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Testing
+/__tests__/
+*.test.js
+*.spec.js

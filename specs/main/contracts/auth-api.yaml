@@ -1,0 +1,306 @@
+openapi: 3.0.3
+info:
+  title: Todo Application - Authentication API
+  description: |
+    Authentication endpoints for the full-stack todo application.
+    Provides user registration, login, and logout functionality with JWT-based authentication.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Development server
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication operations
+
+paths:
+  /auth/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Create new user account
+      description: |
+        Register a new user with email and password.
+        Password is hashed with bcrypt (cost factor 12) before storage.
+        Returns user information and JWT token upon successful registration.
+      operationId: signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+            examples:
+              basic:
+                summary: Basic signup
+                value:
+                  email: user@example.com
+                  password: securepassword123
+              withName:
+                summary: Signup with name
+                value:
+                  email: user@example.com
+                  password: securepassword123
+                  name: John Doe
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                user:
+                  id: 1
+                  email: user@example.com
+                  name: John Doe
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: Email already registered
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              example:
+                detail: Validation error
+                errors:
+                  - field: email
+                    message: Invalid email format
+                    code: value_error.email
+                  - field: password
+                    message: Password must be at least 8 characters
+                    code: value_error.any_str.min_length
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      description: |
+        Login with email and password credentials.
+        Returns user information and JWT token upon successful authentication.
+        Token expires after 7 days.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: user@example.com
+              password: securepassword123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                user:
+                  id: 1
+                  email: user@example.com
+                  name: John Doe
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: Invalid email or password
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: |
+        Logout the currently authenticated user.
+        Note: JWT tokens are stateless, so this endpoint primarily serves
+        as a signal to the client to clear the token.
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Logged out successfully
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: Could not validate credentials
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from /auth/signup or /auth/login.
+        Include in Authorization header as: Bearer <token>
+
+  schemas:
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: User's email address (must be unique)
+          example: user@example.com
+        password:
+          type: string
+          minLength: 8
+          maxLength: 100
+          description: User's password (will be hashed with bcrypt)
+          example: securepassword123
+        name:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: User's display name (optional)
+          example: John Doe
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: user@example.com
+        password:
+          type: string
+          description: User's password
+          example: securepassword123
+
+    AuthResponse:
+      type: object
+      required:
+        - user
+        - token
+      properties:
+        user:
+          $ref: '#/components/schemas/UserInfo'
+        token:
+          type: string
+          description: JWT token (expires in 7 days)
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiZXhwIjoxNzA5ODU2MDAwfQ.signature
+
+    UserInfo:
+      type: object
+      required:
+        - id
+        - email
+      properties:
+        id:
+          type: integer
+          description: Unique user identifier
+          example: 1
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: user@example.com
+        name:
+          type: string
+          nullable: true
+          description: User's display name
+          example: John Doe
+
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: Operation completed successfully
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: An error occurred
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - detail
+        - errors
+      properties:
+        detail:
+          type: string
+          description: General error message
+          example: Validation error
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    ValidationError:
+      type: object
+      required:
+        - field
+        - message
+        - code
+      properties:
+        field:
+          type: string
+          description: Field that failed validation
+          example: email
+        message:
+          type: string
+          description: Human-readable error message
+          example: Invalid email format
+        code:
+          type: string
+          description: Machine-readable error code
+          example: value_error.email
+
+security: []

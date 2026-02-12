@@ -1,0 +1,441 @@
+apiVersion: v1
+kind: DatabaseSpec
+metadata:
+  name: todo-chatbot-database
+  version: "1.0.0"
+  description: "Database schema and configuration for Todo Chatbot application"
+  type: postgresql
+schema:
+  version: "1.0.0"
+tables:
+  - name: users
+    description: "Stores user account information"
+    columns:
+      - name: id
+        type: uuid
+        nullable: false
+        unique: true
+        default: "gen_random_uuid()"
+        description: "Unique identifier for the user"
+      - name: email
+        type: varchar(255)
+        nullable: false
+        unique: true
+        description: "Email address of the user"
+      - name: name
+        type: varchar(100)
+        nullable: true
+        description: "Display name of the user"
+      - name: password_hash
+        type: varchar(255)
+        nullable: false
+        description: "Hashed password for authentication"
+      - name: created_at
+        type: timestamp
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Timestamp when the user account was created"
+      - name: updated_at
+        type: timestamp
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Timestamp when the user account was last updated"
+    constraints:
+      - type: primary-key
+        definition: "PRIMARY KEY (id)"
+      - type: check
+        definition: "CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')"
+    indexes:
+      - name: idx_users_email
+        type: btree
+        columns: ["email"]
+        unique: true
+        description: "Index for efficient email lookups"
+
+  - name: todos
+    description: "Stores todo items for users"
+    columns:
+      - name: id
+        type: uuid
+        nullable: false
+        unique: true
+        default: "gen_random_uuid()"
+        description: "Unique identifier for the todo"
+      - name: user_id
+        type: uuid
+        nullable: false
+        description: "Reference to the user who owns this todo"
+      - name: title
+        type: varchar(200)
+        nullable: false
+        description: "Title of the todo item"
+      - name: description
+        type: text
+        nullable: true
+        description: "Detailed description of the todo item"
+      - name: completed
+        type: boolean
+        nullable: false
+        default: false
+        description: "Whether the todo is completed"
+      - name: due_date
+        type: timestamp
+        nullable: true
+        description: "Due date for the todo item"
+      - name: priority
+        type: varchar(10)
+        nullable: false
+        default: "'medium'"
+        description: "Priority level of the todo item"
+      - name: created_at
+        type: timestamp
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Timestamp when the todo was created"
+      - name: updated_at
+        type: timestamp
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Timestamp when the todo was last updated"
+    constraints:
+      - type: primary-key
+        definition: "PRIMARY KEY (id)"
+      - type: foreign-key
+        definition: "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+      - type: check
+        definition: "CHECK (priority IN ('low', 'medium', 'high'))"
+    indexes:
+      - name: idx_todos_user_id
+        type: btree
+        columns: ["user_id"]
+        description: "Index for efficient user todo lookups"
+      - name: idx_todos_completed
+        type: btree
+        columns: ["completed"]
+        description: "Index for filtering completed todos"
+      - name: idx_todos_due_date
+        type: btree
+        columns: ["due_date"]
+        description: "Index for sorting by due date"
+      - name: idx_todos_priority
+        type: btree
+        columns: ["priority"]
+        description: "Index for filtering by priority"
+
+  - name: conversations
+    description: "Stores chatbot conversation history"
+    columns:
+      - name: id
+        type: uuid
+        nullable: false
+        unique: true
+        default: "gen_random_uuid()"
+        description: "Unique identifier for the conversation"
+      - name: user_id
+        type: uuid
+        nullable: false
+        description: "Reference to the user who initiated the conversation"
+      - name: title
+        type: varchar(200)
+        nullable: true
+        description: "Title of the conversation"
+      - name: created_at
+        type: timestamp
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Timestamp when the conversation was started"
+      - name: updated_at
+        type: timestamp
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Timestamp when the conversation was last updated"
+    constraints:
+      - type: primary-key
+        definition: "PRIMARY KEY (id)"
+      - type: foreign-key
+        definition: "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    indexes:
+      - name: idx_conversations_user_id
+        type: btree
+        columns: ["user_id"]
+        description: "Index for efficient user conversation lookups"
+
+  - name: conversation_messages
+    description: "Stores individual messages in a conversation"
+    columns:
+      - name: id
+        type: uuid
+        nullable: false
+        unique: true
+        default: "gen_random_uuid()"
+        description: "Unique identifier for the message"
+      - name: conversation_id
+        type: uuid
+        nullable: false
+        description: "Reference to the conversation this message belongs to"
+      - name: sender
+        type: varchar(20)
+        nullable: false
+        description: "Indicates if the message was sent by 'user' or 'bot'"
+      - name: content
+        type: text
+        nullable: false
+        description: "The actual message content"
+      - name: created_at
+        type: timestamp
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Timestamp when the message was sent"
+    constraints:
+      - type: primary-key
+        definition: "PRIMARY KEY (id)"
+      - type: foreign-key
+        definition: "FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE"
+      - type: check
+        definition: "CHECK (sender IN ('user', 'bot'))"
+    indexes:
+      - name: idx_conv_messages_conversation_id
+        type: btree
+        columns: ["conversation_id"]
+        description: "Index for efficient conversation message lookups"
+      - name: idx_conv_messages_created_at
+        type: btree
+        columns: ["created_at"]
+        description: "Index for ordering messages chronologically"
+
+relationships:
+  - type: one-to-many
+    table: users
+    foreignKey: user_id
+    references: users.id
+    onDelete: cascade
+    onUpdate: cascade
+  - type: one-to-many
+    table: todos
+    foreignKey: user_id
+    references: users.id
+    onDelete: cascade
+    onUpdate: cascade
+  - type: one-to-many
+    table: conversations
+    foreignKey: user_id
+    references: users.id
+    onDelete: cascade
+    onUpdate: cascade
+  - type: one-to-many
+    table: conversation_messages
+    foreignKey: conversation_id
+    references: conversations.id
+    onDelete: cascade
+    onUpdate: cascade
+
+views:
+  - name: user_todos_summary
+    definition: |
+      SELECT 
+        u.id as user_id,
+        u.name as user_name,
+        COUNT(t.id) as total_todos,
+        COUNT(CASE WHEN t.completed THEN 1 END) as completed_todos,
+        COUNT(CASE WHEN NOT t.completed THEN 1 END) as pending_todos
+      FROM users u
+      LEFT JOIN todos t ON u.id = t.user_id
+      GROUP BY u.id, u.name;
+
+functions:
+  - name: update_updated_at_column
+    language: plpgsql
+    returns: trigger
+    definition: |
+      BEGIN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+        RETURN NEW;
+      END;
+
+triggers:
+  - name: update_users_updated_at
+    table: users
+    timing: before
+    event: update
+    definition: |
+      EXECUTE PROCEDURE update_updated_at_column();
+  - name: update_todos_updated_at
+    table: todos
+    timing: before
+    event: update
+    definition: |
+      EXECUTE PROCEDURE update_updated_at_column();
+  - name: update_conversations_updated_at
+    table: conversations
+    timing: before
+    event: update
+    definition: |
+      EXECUTE PROCEDURE update_updated_at_column();
+
+migrations:
+  tool: flyway
+  directory: "./migrations"
+  versions:
+    - version: "1.0.0"
+      description: "Initial schema for Todo Chatbot application"
+      up: |
+        CREATE TABLE users (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email VARCHAR(255) NOT NULL UNIQUE,
+          name VARCHAR(100),
+          password_hash VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE todos (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title VARCHAR(200) NOT NULL,
+          description TEXT,
+          completed BOOLEAN NOT NULL DEFAULT FALSE,
+          due_date TIMESTAMP,
+          priority VARCHAR(10) NOT NULL DEFAULT 'medium',
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE conversations (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title VARCHAR(200),
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE conversation_messages (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+          sender VARCHAR(20) NOT NULL CHECK (sender IN ('user', 'bot')),
+          content TEXT NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE INDEX idx_users_email ON users(email);
+        CREATE INDEX idx_todos_user_id ON todos(user_id);
+        CREATE INDEX idx_todos_completed ON todos(completed);
+        CREATE INDEX idx_todos_due_date ON todos(due_date);
+        CREATE INDEX idx_todos_priority ON todos(priority);
+        CREATE INDEX idx_conversations_user_id ON conversations(user_id);
+        CREATE INDEX idx_conv_messages_conversation_id ON conversation_messages(conversation_id);
+        CREATE INDEX idx_conv_messages_created_at ON conversation_messages(created_at);
+        
+        CREATE OR REPLACE FUNCTION update_updated_at_column()
+        RETURNS TRIGGER AS $$
+        BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+        END;
+        $$ language 'plpgsql';
+        
+        CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+          FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+          
+        CREATE TRIGGER update_todos_updated_at BEFORE UPDATE ON todos
+          FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+          
+        CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations
+          FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+      down: |
+        DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
+        DROP TRIGGER IF EXISTS update_todos_updated_at ON todos;
+        DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+        DROP FUNCTION IF EXISTS update_updated_at_column();
+        DROP TABLE IF EXISTS conversation_messages;
+        DROP TABLE IF EXISTS conversations;
+        DROP TABLE IF EXISTS todos;
+        DROP TABLE IF EXISTS users;
+
+configuration:
+  connection:
+    host: postgres
+    port: 5432
+    database: tododb
+    username: todouser
+    passwordSecret: postgres-credentials
+  ssl:
+    enabled: true
+    mode: require
+  pool:
+    minConnections: 5
+    maxConnections: 20
+    connectionTimeout: "30s"
+    idleTimeout: "300s"
+  performance:
+    sharedBuffers: "256MB"
+    workMem: "4MB"
+    maintenanceWorkMem: "64MB"
+    effectiveCacheSize: "1GB"
+    maxConnections: 100
+
+replication:
+  enabled: false
+  type: master-slave
+  replicas: 0
+  lag:
+    maxBytes: "10MB"
+    maxSeconds: 30
+
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention:
+    daily: 7
+    weekly: 4
+    monthly: 12
+  strategy:
+    type: full
+    compression: true
+    encryption: true
+  destination:
+    type: filesystem
+    location: "/backups/postgres"
+
+monitoring:
+  metrics:
+    - name: active_connections
+      query: |
+        SELECT count(*) FROM pg_stat_activity WHERE datname = current_database();
+      interval: "30s"
+    - name: slow_queries
+      query: |
+        SELECT count(*) FROM pg_stat_statements WHERE mean_time > 1000;
+      interval: "60s"
+  alerts:
+    - name: high_connection_usage
+      condition: "active_connections > 80"
+      severity: warning
+      threshold: 80
+    - name: slow_query_alert
+      condition: "slow_queries > 5"
+      severity: warning
+      threshold: 5
+
+security:
+  encryption:
+    atRest: true
+    inTransit: true
+  authentication:
+    method: password
+  users:
+    - name: todouser
+      roles: ["tododb_owner"]
+      databases: ["tododb"]
+      privileges: ["ALL PRIVILEGES ON DATABASE tododb", "CREATE ON SCHEMA public"]
+  rowLevelSecurity:
+    enabled: false
+    policies: []
+
+maintenance:
+  vacuum:
+    enabled: true
+    schedule: "0 1 * * *"  # Daily at 1 AM
+    analyze: true
+  reindex:
+    enabled: true
+    schedule: "0 3 1 * *"  # Monthly at 3 AM on 1st day
